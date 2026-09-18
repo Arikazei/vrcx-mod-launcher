@@ -12,6 +12,9 @@ public class MainForm : Form
     private readonly Button _choose = new();
     private readonly Button _refresh = new();
     private readonly Button _autorun = new();
+    private readonly CheckedListBox _mods = new();
+    private Manifest? _manifest;
+    private bool _suppressModEvents;
     private string? _vrcxDir;
 
     public MainForm(string? problem) : this()
@@ -26,8 +29,8 @@ public class MainForm : Form
     public MainForm()
     {
         Text = "VRCX Mods";
-        Width = 720;
-        Height = 480;
+        Width = 760;
+        Height = 580;
         StartPosition = FormStartPosition.CenterScreen;
         Font = new Font("Segoe UI", 9.5f);
 
@@ -51,6 +54,15 @@ public class MainForm : Form
         SetupButton(_autorun, "Autostart", 150, OnAutoRun);
         buttons.Controls.AddRange([_apply, _remove, _start, _choose, _refresh, _autorun]);
 
+        _mods.Dock = DockStyle.Top;
+        _mods.Height = 110;
+        _mods.CheckOnClick = true;
+        _mods.BorderStyle = BorderStyle.None;
+        _mods.BackColor = Color.FromArgb(38, 38, 40);
+        _mods.ForeColor = Color.Gainsboro;
+        _mods.IntegralHeight = false;
+        _mods.ItemCheck += OnModCheck;
+
         _log.Dock = DockStyle.Fill;
         _log.Multiline = true;
         _log.ReadOnly = true;
@@ -60,6 +72,7 @@ public class MainForm : Form
         _log.BorderStyle = BorderStyle.None;
 
         Controls.Add(_log);
+        Controls.Add(_mods);
         Controls.Add(buttons);
         Controls.Add(_status);
 
@@ -113,6 +126,8 @@ public class MainForm : Form
                 $"Mod-Dateien: {(payloadOk ? Paths.PayloadDir : "fehlen in " + Paths.PayloadDir)}" +
                 updateHint;
 
+            FillModList();
+
             _apply.Enabled = payloadOk;
             _remove.Enabled = s.Patched || s.BackupExists;
             _start.Enabled = true;
@@ -120,6 +135,61 @@ public class MainForm : Form
         catch (Exception ex)
         {
             _status.Text = "Status nicht lesbar: " + ex.Message;
+        }
+    }
+
+    /// <summary>
+    /// Zeigt die Mods einzeln mit Name, Version und Haken fuer aktiv/inaktiv.
+    /// Quelle ist das Manifest im Payload; installiert wird der Stand erst mit
+    /// "Mods installieren".
+    /// </summary>
+    private void FillModList()
+    {
+        _suppressModEvents = true;
+        try
+        {
+            _mods.Items.Clear();
+            _manifest = Manifest.Load(Manifest.PayloadManifest);
+
+            if (_manifest is null || _manifest.Mods.Count == 0)
+            {
+                _mods.Items.Add("keine Mods im Payload gefunden");
+                return;
+            }
+
+            var installed = _vrcxDir is null ? null : Manifest.Load(Manifest.InstalledManifest(_vrcxDir));
+
+            foreach (var mod in _manifest.Mods)
+            {
+                var live = installed?.Mods.FirstOrDefault(m => m.Id == mod.Id);
+                var note = live is null
+                    ? "  (noch nicht installiert)"
+                    : live.Version != mod.Version
+                        ? $"  (installiert: v{live.Version ?? "?"})"
+                        : "";
+                _mods.Items.Add(mod.Display + note, mod.Enabled);
+            }
+        }
+        finally
+        {
+            _suppressModEvents = false;
+        }
+    }
+
+    private void OnModCheck(object? sender, ItemCheckEventArgs e)
+    {
+        if (_suppressModEvents || _manifest is null || e.Index >= _manifest.Mods.Count) return;
+
+        var mod = _manifest.Mods[e.Index];
+        mod.Enabled = e.NewValue == CheckState.Checked;
+        try
+        {
+            _manifest.Save(Manifest.PayloadManifest);
+            Log($"{mod.Name ?? mod.Id}: {(mod.Enabled ? "aktiviert" : "deaktiviert")} — wirksam nach \"Mods installieren\".");
+        }
+        catch (Exception ex)
+        {
+            Log("Konnte Manifest nicht speichern: " + ex.Message);
         }
     }
 

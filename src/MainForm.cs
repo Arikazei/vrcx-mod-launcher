@@ -11,7 +11,17 @@ public class MainForm : Form
     private readonly Button _start = new();
     private readonly Button _choose = new();
     private readonly Button _refresh = new();
+    private readonly Button _autorun = new();
     private string? _vrcxDir;
+
+    public MainForm(string? problem) : this()
+    {
+        if (problem is not null)
+        {
+            Log("PROBLEM: " + problem);
+            MessageBox.Show(problem, "VRCX Mods", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+    }
 
     public MainForm()
     {
@@ -38,7 +48,8 @@ public class MainForm : Form
         SetupButton(_start, "VRCX starten", 120, OnStart);
         SetupButton(_choose, "Ordner waehlen", 130, OnChoose);
         SetupButton(_refresh, "Aktualisieren", 110, (_, _) => Refresh0());
-        buttons.Controls.AddRange([_apply, _remove, _start, _choose, _refresh]);
+        SetupButton(_autorun, "Autostart", 150, OnAutoRun);
+        buttons.Controls.AddRange([_apply, _remove, _start, _choose, _refresh, _autorun]);
 
         _log.Dock = DockStyle.Fill;
         _log.Multiline = true;
@@ -86,10 +97,19 @@ public class MainForm : Form
                 ? $"\n⚠ VRCX wurde aktualisiert ({s.PatchedVersion} → {s.VrcxVersion}) - Mods neu installieren."
                 : "";
 
+            var autoText = AutoRun.GetState() switch
+            {
+                AutoRunState.Mods => "Autostart: über VRCX Mods (patcht nach Updates selbst nach)",
+                AutoRunState.Vrcx => "Autostart: direkt VRCX — nach einem Update fehlen die Mods",
+                _ => "Autostart: nicht eingerichtet"
+            };
+            _autorun.Text = AutoRun.GetState() == AutoRunState.Mods ? "Autostart zurücksetzen" : "Autostart übernehmen";
+
             _status.Text =
                 $"VRCX {s.VrcxVersion}   ·   {_vrcxDir}\n" +
                 $"Status: {(s.Patched ? "Mods aktiv" : "nicht gepatcht")}   ·   " +
                 $"{s.ModCount} Mod(s)   ·   Backup: {(s.BackupExists ? "ja" : "nein")}\n" +
+                $"{autoText}\n" +
                 $"Mod-Dateien: {(payloadOk ? Paths.PayloadDir : "fehlen in " + Paths.PayloadDir)}" +
                 updateHint;
 
@@ -223,6 +243,30 @@ public class MainForm : Form
         {
             Log("Start fehlgeschlagen: " + ex.Message);
         }
+    }
+
+    private void OnAutoRun(object? sender, EventArgs e)
+    {
+        try
+        {
+            if (AutoRun.GetState() == AutoRunState.Mods)
+            {
+                AutoRun.Disable();
+                Log("Autostart zurückgesetzt.");
+            }
+            else
+            {
+                var exe = Environment.ProcessPath ?? Application.ExecutablePath;
+                AutoRun.Enable(exe);
+                Log("Autostart läuft jetzt über: " + exe);
+                Log("Nach einem VRCX-Update wird beim nächsten Start automatisch nachgepatcht.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log("Autostart-Änderung fehlgeschlagen: " + ex.Message);
+        }
+        Refresh0();
     }
 
     private void OnChoose(object? sender, EventArgs e)

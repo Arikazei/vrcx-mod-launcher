@@ -10,6 +10,9 @@ public class State
     public string? LoaderVersion { get; set; }
     public DateTime? PatchedAt { get; set; }
 
+    /// <summary>Autostart-Wert, der vor dem Umbiegen auf den Launcher galt.</summary>
+    public string? PreviousAutoRun { get; set; }
+
     private static readonly JsonSerializerOptions Options = new() { WriteIndented = true };
 
     public static State? Load()

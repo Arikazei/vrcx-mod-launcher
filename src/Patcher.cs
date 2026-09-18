@@ -72,13 +72,30 @@ public static class Patcher
         File.WriteAllText(index, patched);
         log("index.html gepatcht (2 Zeilen)");
 
-        new State
-        {
-            VrcxDir = vrcxDir,
-            VrcxVersion = Paths.ReadVersion(vrcxDir),
-            LoaderVersion = ReadLoaderVersion(),
-            PatchedAt = DateTime.Now
-        }.Save();
+        // Vorhandenen Zustand weiterschreiben statt ersetzen - sonst ginge der
+        // gesicherte Autostart-Wert verloren.
+        var state = State.Load() ?? new State();
+        state.VrcxDir = vrcxDir;
+        state.VrcxVersion = Paths.ReadVersion(vrcxDir);
+        state.LoaderVersion = ReadLoaderVersion();
+        state.PatchedAt = DateTime.Now;
+        state.Save();
+    }
+
+    /// <summary>
+    /// Muss gepatcht werden? Entweder ist die Installation unberuehrt, oder VRCX
+    /// hat sich aktualisiert und dabei den html-Ordner samt Patch ersetzt.
+    /// </summary>
+    public static bool NeedsPatch(string vrcxDir)
+    {
+        var index = File.ReadAllText(Paths.IndexHtml(vrcxDir));
+        if (!index.Contains(Marker)) return true;
+
+        var loaderPresent = File.Exists(Path.Combine(Paths.ModsDir(vrcxDir), "loader.js"));
+        if (!loaderPresent) return true;
+
+        var state = State.Load();
+        return state?.VrcxVersion is not null && state.VrcxVersion != Paths.ReadVersion(vrcxDir);
     }
 
     public static void Remove(string vrcxDir, Action<string> log)

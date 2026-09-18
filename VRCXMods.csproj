@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>WinExe</OutputType>
+        <TargetFramework>net10.0-windows</TargetFramework>
+        <UseWindowsForms>true</UseWindowsForms>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <AssemblyName>VRCXMods</AssemblyName>
+        <RootNamespace>VRCXMods</RootNamespace>
+        <Version>0.1.0</Version>
+        <PublishSingleFile>true</PublishSingleFile>
+        <SelfContained>false</SelfContained>
+        <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+        <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    </PropertyGroup>
+
+</Project>

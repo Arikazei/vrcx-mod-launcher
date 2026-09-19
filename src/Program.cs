@@ -47,6 +47,7 @@ internal static class Program
     /// </summary>
     private static string? RunSilent(out string? vrcxDir)
     {
+        Paths.SyncBundledPayload();
         vrcxDir = Paths.FindVrcx();
         if (vrcxDir is null) return "VRCX wurde nicht gefunden - bitte den Ordner einmal manuell waehlen.";
 

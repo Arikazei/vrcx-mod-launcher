@@ -14,6 +14,37 @@ public static class Paths
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "VRCXMods");
 
     public static string PayloadDir => Path.Combine(DataDir, "payload");
+
+    /// <summary>Payload, der neben der EXE mitgeliefert wird (Release-Paket).</summary>
+    public static string BundledPayloadDir =>
+        Path.Combine(Path.GetDirectoryName(Environment.ProcessPath ?? Application.ExecutablePath) ?? ".", "payload");
+
+    /// <summary>
+    /// Uebernimmt einen mitgelieferten Payload in den Arbeitsordner, wenn dort
+    /// noch keiner liegt oder der beiliegende neuer ist. So ist das Release-Zip
+    /// selbstinstallierend, und der Arbeitsordner bleibt beschreibbar (im
+    /// Programmordner duerfte der Launcher sonst nichts speichern).
+    /// </summary>
+    public static bool SyncBundledPayload(Action<string>? log = null)
+    {
+        var bundled = BundledPayloadDir;
+        if (!File.Exists(Path.Combine(bundled, "loader.js"))) return false;
+
+        var bundledVersion = Manifest.Load(Path.Combine(bundled, "manifest.json"))?.LoaderVersion;
+        var installedVersion = Manifest.Load(Path.Combine(PayloadDir, "manifest.json"))?.LoaderVersion;
+        var haveInstalled = File.Exists(Path.Combine(PayloadDir, "loader.js"));
+
+        if (haveInstalled && string.CompareOrdinal(bundledVersion, installedVersion) <= 0) return false;
+
+        foreach (var src in Directory.GetFiles(bundled, "*", SearchOption.AllDirectories))
+        {
+            var dst = Path.Combine(PayloadDir, Path.GetRelativePath(bundled, src));
+            Directory.CreateDirectory(Path.GetDirectoryName(dst)!);
+            File.Copy(src, dst, true);
+        }
+        log?.Invoke($"Mitgelieferte Mod-Dateien übernommen (Loader {bundledVersion ?? "?"}).");
+        return true;
+    }
     public static string StateFile => Path.Combine(DataDir, "state.json");
     public static string LogDir => Path.Combine(DataDir, "logs");
 

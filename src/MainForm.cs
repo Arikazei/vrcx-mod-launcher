@@ -76,6 +76,7 @@ public class MainForm : Form
         Controls.Add(buttons);
         Controls.Add(_status);
 
+        Paths.SyncBundledPayload(Log);
         _vrcxDir = Paths.FindVrcx();
         Refresh0();
     }

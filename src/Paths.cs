@@ -30,11 +30,14 @@ public static class Paths
         var bundled = BundledPayloadDir;
         if (!File.Exists(Path.Combine(bundled, "loader.js"))) return false;
 
-        var bundledVersion = Manifest.Load(Path.Combine(bundled, "manifest.json"))?.LoaderVersion;
-        var installedVersion = Manifest.Load(Path.Combine(PayloadDir, "manifest.json"))?.LoaderVersion;
-        var haveInstalled = File.Exists(Path.Combine(PayloadDir, "loader.js"));
+        var bundledManifest = Manifest.Load(Path.Combine(bundled, "manifest.json"));
+        var installedManifest = Manifest.Load(Path.Combine(PayloadDir, "manifest.json"));
+        var haveInstalled = File.Exists(Path.Combine(PayloadDir, "loader.js")) && installedManifest is not null;
 
-        if (haveInstalled && string.CompareOrdinal(bundledVersion, installedVersion) <= 0) return false;
+        // Uebernehmen, sobald sich IRGENDETWAS geaendert hat - Loader-Version oder
+        // die Version eines einzelnen Mods. Nur auf den Loader zu schauen hiesse,
+        // dass reine Mod-Updates bei anderen nie ankommen.
+        if (haveInstalled && Fingerprint(bundledManifest) == Fingerprint(installedManifest)) return false;
 
         foreach (var src in Directory.GetFiles(bundled, "*", SearchOption.AllDirectories))
         {
@@ -42,8 +45,31 @@ public static class Paths
             Directory.CreateDirectory(Path.GetDirectoryName(dst)!);
             File.Copy(src, dst, true);
         }
-        log?.Invoke($"Mitgelieferte Mod-Dateien übernommen (Loader {bundledVersion ?? "?"}).");
+
+        // Die An/Aus-Haken des Nutzers ueberleben das Update
+        if (installedManifest is not null)
+        {
+            var merged = Manifest.Load(Path.Combine(PayloadDir, "manifest.json"));
+            if (merged is not null)
+            {
+                foreach (var mod in merged.Mods)
+                {
+                    var before = installedManifest.Mods.FirstOrDefault(m => m.Id == mod.Id);
+                    if (before is not null) mod.Enabled = before.Enabled;
+                }
+                merged.Save(Path.Combine(PayloadDir, "manifest.json"));
+            }
+        }
+
+        log?.Invoke($"Mitgelieferte Mod-Dateien übernommen ({Fingerprint(bundledManifest)}).");
         return true;
+    }
+
+    private static string Fingerprint(Manifest? m)
+    {
+        if (m is null) return "";
+        var mods = string.Join(", ", m.Mods.OrderBy(x => x.Id).Select(x => $"{x.Id} {x.Version}"));
+        return $"Loader {m.LoaderVersion} | {mods}";
     }
     public static string StateFile => Path.Combine(DataDir, "state.json");
     public static string LogDir => Path.Combine(DataDir, "logs");

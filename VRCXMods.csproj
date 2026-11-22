@@ -8,7 +8,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <AssemblyName>VRCXMods</AssemblyName>
         <RootNamespace>VRCXMods</RootNamespace>
-        <Version>0.1.2</Version>
+        <Version>0.1.3</Version>
         <PublishSingleFile>true</PublishSingleFile>
         <SelfContained>false</SelfContained>
         <RuntimeIdentifier>win-x64</RuntimeIdentifier>

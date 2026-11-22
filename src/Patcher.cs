@@ -4,8 +4,9 @@ public record PatchStatus(bool Patched, string VrcxVersion, bool BackupExists, i
 
 /// <summary>
 /// Patcht genau zwei Zeilen in die offizielle index.html: eine Import-Map, die
-/// 'vue' auf unsere mitgelieferte Kopie zeigt, und das Loader-Script. VRCX selbst
-/// bleibt unveraendert - die Installation ist damit weiterhin die signierte
+/// 'vue' auf unsere mitgelieferte Kopie zeigt, und das Loader-Script. Dazu kommen
+/// optionale, einzeilige Code-Hooks einzelner Mods (BundlePatcher). VRCX.exe
+/// bleibt unveraendert - die Installation ist weiterhin die signierte
 /// Originalversion und aktualisiert sich normal weiter.
 /// </summary>
 public static class Patcher
@@ -72,6 +73,17 @@ public static class Patcher
         File.WriteAllText(index, patched);
         log("index.html gepatcht (2 Zeilen)");
 
+        // Code-Hooks einzelner Mods - Fehler hier duerfen die Installation nicht kippen
+        try
+        {
+            BundlePatcher.ApplyAll(vrcxDir, Manifest.Load(Manifest.InstalledManifest(vrcxDir)), log);
+        }
+        catch (Exception ex)
+        {
+            log("Code-Hooks uebersprungen: " + ex.Message);
+            try { BundlePatcher.RestoreAll(vrcxDir, log); } catch { /* best effort */ }
+        }
+
         // Vorhandenen Zustand weiterschreiben statt ersetzen - sonst ginge der
         // gesicherte Autostart-Wert verloren.
         var state = State.Load() ?? new State();
@@ -102,6 +114,8 @@ public static class Patcher
     {
         var index = Paths.IndexHtml(vrcxDir);
         var backup = Paths.BackupHtml(vrcxDir);
+
+        BundlePatcher.RestoreAll(vrcxDir, log);
 
         if (File.Exists(backup))
         {

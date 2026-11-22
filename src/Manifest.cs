@@ -11,6 +11,17 @@ public class ModEntry
     [JsonPropertyName("apiVersion")] public string? ApiVersion { get; set; }
     [JsonPropertyName("enabled")] public bool Enabled { get; set; } = true;
 
+    // Muessen beim Speichern erhalten bleiben (sonst fehlt z.B. das CSS eines Mods)
+    [JsonPropertyName("entry"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Entry { get; set; }
+
+    [JsonPropertyName("style"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Style { get; set; }
+
+    /// <summary>Optionale Code-Hooks in VRCXs JS (Datei im Mod-Ordner, siehe BundlePatcher).</summary>
+    [JsonPropertyName("patches"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Patches { get; set; }
+
     public string Display => $"{Name ?? Id}   v{Version ?? "?"}";
 }
 

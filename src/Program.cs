@@ -38,6 +38,29 @@ internal static class Program
             return;
         }
 
+        // --test-hooks <ordner>: Code-Hooks gegen eine KOPIE von VRCX testen (Entwicklung).
+        // Erwartet <ordner>\html\assets und <ordner>\html\mods\manifest.json.
+        var testIdx = Array.FindIndex(args, a => a.Equals("--test-hooks", StringComparison.OrdinalIgnoreCase));
+        if (testIdx >= 0 && testIdx + 1 < args.Length)
+        {
+            var dir = args[testIdx + 1];
+            var log = new StringBuilder();
+            try
+            {
+                var n = BundlePatcher.ApplyAll(dir, Manifest.Load(Manifest.InstalledManifest(dir)), l => log.AppendLine(l));
+                log.AppendLine($"=> {n} Hook(s) gesetzt");
+                if (args.Any(a => a.Equals("--restore", StringComparison.OrdinalIgnoreCase)))
+                    BundlePatcher.RestoreAll(dir, l => log.AppendLine(l));
+            }
+            catch (Exception ex)
+            {
+                log.AppendLine("FEHLER: " + ex);
+            }
+            Directory.CreateDirectory(Paths.LogDir);
+            File.WriteAllText(Path.Combine(Paths.LogDir, "hooktest.log"), log.ToString());
+            return;
+        }
+
         Application.Run(new MainForm());
     }
 
